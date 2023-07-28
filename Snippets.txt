@@ -1,0 +1,153 @@
+// Assume you have initialized Firebase app and authenticated the user.
+
+// Function to handle user profile update with image
+async function updateUserProfileWithImage(userId, username, email, imageFile) {
+  try {
+    // Step 1: Upload the image to Firebase Storage
+    const storageRef = firebase.storage().ref();
+    const imageRef = storageRef.child(`profileImages/${userId}/${imageFile.name}`);
+    await imageRef.put(imageFile);
+
+    // Step 2: Get the download URL of the uploaded image
+    const imageUrl = await imageRef.getDownloadURL();
+
+    // Step 3: Store user profile data in Firestore
+    const userRef = firebase.firestore().collection('users').doc(userId);
+    await userRef.set({
+      username: username,
+      email: email,
+      profileImageUrl: imageUrl,
+    });
+
+    console.log('User profile updated successfully!');
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+  }
+}
+
+
+
+++++++++++++++++++++++++++++++++++++++++++++++++++
+
+class ImagePickerExample extends StatefulWidget {
+  @override
+  _ImagePickerExampleState createState() => _ImagePickerExampleState();
+}
+
+class _ImagePickerExampleState extends State<ImagePickerExample> {
+  File? _image;
+
+  Future<void> _getImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      setState(() {
+        _image = File(pickedFile.path);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Image Picker Example'),
+      ),
+      body: Center(
+        child: _image == null
+            ? Text('No image selected.')
+            : Image.file(_image!),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _getImage,
+        tooltip: 'Pick Image',
+        child: Icon(Icons.add_a_photo),
+      ),
+    );
+  }
+}
+
++++++++++++++++++++++++++++++++++++++
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
+
+class ImagePickerExample extends StatefulWidget {
+  @override
+  _ImagePickerExampleState createState() => _ImagePickerExampleState();
+}
+
+class _ImagePickerExampleState extends State<ImagePickerExample> {
+  File? _image;
+
+  Future<void> _getImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      setState(() {
+        _image = File(pickedFile.path);
+      });
+    }
+  }
+
+  Future<void> _updateProfilePic() async {
+    if (_image != null) {
+      try {
+        // Upload the new image to Firebase Storage
+        String userId = 'YOUR_USER_ID'; // Replace with the actual user ID
+        String imageName = 'profile_pic.jpg'; // Customize the image filename
+        firebase_storage.Reference ref = firebase_storage.FirebaseStorage.instance
+            .ref()
+            .child('profileImages')
+            .child(userId)
+            .child(imageName);
+        await ref.putFile(_image!);
+
+        // Get the download URL of the uploaded image
+        String imageUrl = await ref.getDownloadURL();
+
+        // Update user profile data in Firestore (you should have a 'users' collection)
+        firebase.firestore().collection('users').doc(userId).update({
+          'profileImageUrl': imageUrl,
+        });
+
+        // Optionally, you can update the local state to reflect the new image
+        setState(() {
+          // ...
+        });
+
+        print('Profile picture updated successfully!');
+      } catch (error) {
+        print('Error updating profile picture: $error');
+      }
+    } else {
+      print('No image selected.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Image Picker Example'),
+      ),
+      body: Center(
+        child: _image == null
+            ? Text('No image selected.')
+            : Image.file(_image!),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          _getImage().then((_) {
+            _updateProfilePic();
+          });
+        },
+        tooltip: 'Pick Image',
+        child: Icon(Icons.add_a_photo),
+      ),
+    );
+  }
+}
